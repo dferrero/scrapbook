@@ -3,56 +3,56 @@
 # REM - Remote
 # LOC - Local
 REMLOG=""
-LOCRUTABASE=""
-FECHALOG=`date "+[%F %H:%M]"`
+LOCBASEPATH=""
+DATELOG=`date "+[%F %H:%M]"`
 TEMPORAL=""
-LOGUNIFICADO="$LOCRUTABASE/unified.log"
+UNIFIEDLOG="$LOCBASEPATH/unified.log"
+FILENAME=""
 
-# Array de servidores, separados por espacios
-ARRAYIPS=() 
+# All servers you need to access (split with spaces)
+IPS=() 
 
-USUARIO=""
-LLAVESSH=""
+USER=""
+SSHKEY=""
 
 # ==== SCRIPT ====
 
-for nodo in ${ARRAYIPS[*]}; do
-        DEBUG="$LOCRUTABASE/script.log"
-
+for ip in ${IPS[*]}; do
+        DEBUG="$LOCBASEPATH/script.log"
         touch "$DEBUG"
-        TEMPORAL="$LOCRUTABASE/$nodo/tmp"
+        TEMPORAL="$LOCBASEPATH/$ip/tmp"
         mkdir -p "$TEMPORAL"
 
-        scp -q -i $LLAVESSH $USUARIO@$nodo:$REMLOG $TEMPORAL
-        rutafichremoto="$TEMPORAL/appEventos.log"
+        scp -q -i $SSHKEY $USER@$ip:$REMLOG $TEMPORAL
+        remotefilepath="$TEMPORAL/$FILENAME"
 
-        if [ -f $rutafichremoto ]; then
-                lineasremoto=`wc -l $rutafichremoto | cut -d' ' -f1`
+        if [ -f $remotefilepath ]; then
+                remotelinesnumber=`wc -l $remotefilepath | cut -d' ' -f1`
                 re='^[0-9]+$'
-                if ! [[ $lineasremoto =~ $re ]] ; then
-                        lineasremoto=0
+                if ! [[ $remotelinesnumber =~ $re ]] ; then
+                        remotelinesnumber=0
                 fi
-                rutaloglocal="$LOCRUTABASE/$nodo.log"
-                lineaslocal=0
-                if [[ -f $rutaloglocal ]]; then
-                        lineaslocal=`wc -l $rutaloglocal | cut -d' ' -f1`
+                localfilepath="$LOCBASEPATH/$ip.log"
+                locallinesnumber=0
+                if [[ -f $localfilepath ]]; then
+                        locallinesnumber=`wc -l $localfilepath | cut -d' ' -f1`
                 else
-                        touch $rutaloglocal
+                        touch $localfilepath
                 fi
-                if [ $lineasremoto -gt $lineaslocal ]; then
-                        numlineas=`expr $lineasremoto - $lineaslocal`
-                        tail --lines=$numlineas $rutafichremoto >> "$rutaloglocal"
-                        tail --lines=$numlineas $rutafichremoto >> "$LOGUNIFICADO"
-                        echo "Añadidas $numlineas al fichero $nodo.log" >> $DEBUG
-                elif [ $lineasremoto -eq $lineaslocal ]; then
-                        echo "No hay nuevas lineas en el fichero de $nodo" >> $DEBUG
+                if [ $remotelinesnumber -gt $locallinesnumber ]; then
+                        linesnumber=`expr $remotelinesnumber - $locallinesnumber`
+                        tail --lines=$linesnumber $remotefilepath >> "$localfilepath"
+                        tail --lines=$linesnumber $remotefilepath >> "$UNIFIEDLOG"
+                        echo "Added $linesnumber lines to file $ip.log" >> $DEBUG
+                elif [ $remotelinesnumber -eq $locallinesnumber ]; then
+                        echo "No new lines found on $ip" >> $DEBUG
                 else
-                        echo "[ERROR] Más lineas en local que en remoto del servidor $nodo" >> $DEBUG
+                        echo "[ERROR] More lines found in local than in remote file $ip" >> $DEBUG
                 fi
 
-                # Borramos ficheros auxiliares
-                rm -rf "$LOCRUTABASE/$nodo"
+                # Deleting auxiliar files
+                rm -rf "$LOCBASEPATH/$ip"
         else
-                echo "[ERROR] No existe el fichero appEventos en $nodo" >> $DEBUG
+                echo "[ERROR] File $FILENAME doesn't exist at $ip" >> $DEBUG
         fi
 done
