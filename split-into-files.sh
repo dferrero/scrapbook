@@ -1,41 +1,45 @@
 #!/bin/bash
 
-# ==== VARIABLES ====
-RUTAORIGEN=""
-RUTADEST=""
+# If, for some reason, you need to use different parsers in the same file,
+# you can split into differente files with the same structure log.
 
-EVENTS="$RUTADEST/events.log"
-AUDIT="$RUTADEST/audit.log"
-SESSIONS="$RUTADEST/sessions.log"
+# ==== VARIABLES ====
+ORIGINPATH=""
+DESTINATIONPATH=""
+
+# Events, audit and sessions are three examples
+EVENTS="$DESTINATIONPATH/events.log"
+AUDIT="$DESTINATIONPATH/audit.log"
+SESSIONS="$DESTINATIONPATH/sessions.log"
 
 # ==== SCRIPT ====
 
-for fichero in `ls -tr $RUTAORIGEN | tail -n 3`;
+for file in `ls -tr $ORIGINPATH | tail -n 3`;
 do
-        rutafichorigen="$RUTAORIGEN/$fichero"
-        rutafichdest="$RUTADEST/$fichero"
+        originfilepath="$ORIGINPATH/$file"
+        destinationfilepath="$DESTINATIONPATH/$file"
 
-        event=`echo $fichero | grep Event | wc -l`
-        audit=`echo $fichero | grep Audit | wc -l`
+        event=`echo $file | grep Event | wc -l`
+        audit=`echo $file | grep Audit | wc -l`
 
-        # echo "Fichero a procesar: $fichero"
+        # echo "Fichero a procesar: $file"
 
-        lineasorigen=`cat $rutafichorigen | wc -l`
-        lineasdest=0
-        if [ -f $rutafichdest ]; then
-                lineasdest=`cat $rutafichdest | wc -l`
+        originlines=`cat $originfilepath | wc -l`
+        destinationlines=0
+        if [ -f $destinationfilepath ]; then
+                destinationlines=`cat $destinationfilepath | wc -l`
         fi
 
-        nuevas=$((lineasorigen - lineasdest))
-        if [[ $nuevas -gt 0 ]]; then
-                tail -n $nuevas $rutafichorigen >> "$rutafichdest"
+        newlines=$((originlines - destinationlines))
+        if [[ $newlines -gt 0 ]]; then
+                tail -n $newlines $originfilepath >> "$destinationfilepath"
 
                 if [[ $event -gt 0 ]]; then
-                        tail -n $nuevas $rutafichorigen | sed 's/\t/\|/g' >> "$EVENTS"
+                        tail -n $newlines $originfilepath | sed 's/\t/\|/g' >> "$EVENTS"
                 elif [[ $audit -gt 0 ]]; then
-                        tail -n $nuevas $rutafichorigen | sed 's/\t/\|/g' >> "$AUDIT"
+                        tail -n $newlines $originfilepath | sed 's/\t/\|/g' >> "$AUDIT"
                 else
-                        tail -n $nuevas $rutafichorigen | sed 's/\t/\|/g'>> "$SESSIONS"
+                        tail -n $newlines $originfilepath | sed 's/\t/\|/g'>> "$SESSIONS"
                 fi
         fi
 done
