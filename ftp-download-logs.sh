@@ -7,18 +7,19 @@ FILES='*.LOG'
 DATE=`date "+%Y-%m-%d %H:%M"`
 
 ROOTPATH=""
-FTPLOG="$ROOTPATH/ftp.log"
+FTPLOG="$ROOTPATH/ftp.log" # Output from all ftp commands executed
 SCRIPTLOG="$ROOTPATH/application.log"
 PATHLOGS="$ROOTPATH/logs"
-PATHNEWLOGS="$PATHLOGS/nuevos"
+PATHNEWLOGS="$PATHLOGS/new-logs"
 
-# Comprobamos si hay algún proceso de ftp que se haya quedado bloqueado para eliminarlo
+# Sometimes the ftp command stays as a zombie process. We look for it and, if it appears, we will kill it
+# NOTE: Careful if you have more process related to ftp
 zombies=`pgrep -lf "ftp -nv" | wc -l`
 if [[ $zombies -ne 0 ]]; then
         pkill -f "ftp -nv"
 fi
 
-# Traemos logs nuevos del ftp
+# Retrieve logs from ftp
 cd $PATHNEWLOGS
 ftp -nv $HOST>>$FTPLOG <<END_SCRIPT
 prompt
@@ -29,23 +30,22 @@ mget $FILES
 quit
 END_SCRIPT
 
-for elem in `ls *.TXT`; do
-        echo "[$DATE] Nueva ejecución" >> $SCRIPTLOG
-        if [ ! -f "$PATHLOGS/$elem" ]; then
-                touch "$PATHLOGS/$elem"
-                echo "[$DATE] Creado fichero $elem" >> $SCRIPTLOG
+for file in `ls *.TXT`; do
+        if [ ! -f "$PATHLOGS/$file" ]; then
+                touch "$PATHLOGS/$file"
+                echo "[$DATE] Created file $file" >> $SCRIPTLOG
         fi
-        lnuevas=`wc -l "$PATHNEWLOGS/$elem" | cut -d' ' -f1`
-        lalmacenadas=`wc -l "$PATHLOGS/$elem" | cut -d' ' -f1`
-        ldiff=$((lnuevas - lalmacenadas))
-        echo "[$DATE] Lineas nuevas: $ldiff | Lineas almacenadas: $lalmacenadas" >> $SCRIPTLOG
-        if [[ $ldiff -ne 0 ]]; then
-                if [[ $ldiff -gt 0 ]]; then
-                        tail -n $ldiff "$PATHNEWLOGS/$elem" >> "$PATHLOGS/$elem"
-                        echo "[$DATE] Añadidas $ldiff lineas al fichero $elem" >> $SCRIPTLOG
+        totallines=`wc -l "$PATHNEWLOGS/$file" | cut -d' ' -f1`
+        storedlines=`wc -l "$PATHLOGS/$file" | cut -d' ' -f1`
+        newlines=$((totallines - storedlines))
+        echo "[$DATE] File: $file | New lines: $newlines | Stored lines: $storedlines" >> $SCRIPTLOG
+        if [[ $newlines -ne 0 ]]; then
+                if [[ $newlines -gt 0 ]]; then
+                        tail -n $newlines "$PATHNEWLOGS/$file" >> "$PATHLOGS/$file"
+                        echo "[$DATE] Added $newlines new lines to $file" >> $SCRIPTLOG
                 else
-                        echo "[$DATE] [ERROR] Numero de lineas menor en log nuevo que en log ya almacenado" >> $SCRIPTLOG
+                        echo "[$DATE] [ERROR] $file - More lines on stored file than remote file" >> $SCRIPTLOG
                 fi
         fi
-        rm -rf "$PATHNEWLOGS/$elem"
+        rm -rf "$PATHNEWLOGS/$file"
 done
