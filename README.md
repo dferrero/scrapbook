@@ -1,3 +1,3 @@
 # Scrapbook
 
-Some generic scripts I've made
+Scripts, articles and cheatsheets of all kind of stuff.
